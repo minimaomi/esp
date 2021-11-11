@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<mx:ApplicationControlBar xmlns:mx="http://www.adobe.com/2006/mxml" 
+	width="720" 
+	height="30" 
+	xmlns:ns1="components.toolbars.*" 
+	verticalAlign="middle" 
+	xmlns:print="org.print.*">
+	
+	<mx:Metadata>
+		[Event(name="pdf",type="flash.events.Event")]
+        [Event(name="print",type="flash.events.Event")]
+        [Event(name="previous",type="flash.events.Event")]
+        [Event(name="next",type="flash.events.Event")]
+        [Event(name="pageChanged",type="flash.events.Event")]
+        [Event(name="zoomIn",type="flash.events.Event")]
+        [Event(name="zoomOut",type="flash.events.Event")]
+	</mx:Metadata>
+	
+	<mx:Script>
+		<![CDATA[
+
+			[Bindable]
+			[Embed(source="/assets/page_white_acrobat.png")] 
+			private var pdfIcon:Class;
+						
+			[Bindable]
+			[Embed(source="/assets/printer.png")] 
+			private var printIcon:Class;
+
+			[Bindable]
+			[Embed(source="/assets/print_previous.png")] 
+			private var previousIcon:Class;
+			
+			[Bindable]
+			[Embed(source="/assets/print_next.png")] 
+			private var nextIcon:Class;
+
+			[Bindable]
+			[Embed(source="/assets/print_zoom_in.png")] 
+			private var zoomInIcon:Class;
+			
+			[Bindable]
+			[Embed(source="/assets/print_zoom_out.png")] 
+			private var zoomOutIcon:Class;
+									
+											
+			[Bindable]
+			public var pageNumber:int;
+
+			[Bindable]
+			public var pageCount:int;
+			
+			public var inputNumber:int;
+			
+			private function pageNumberChangeHandler(event:Event):void
+			{
+				inputNumber = pages.inputNumber;
+				dispatchEvent(new Event("pageChanged"));
+				
+			}
+			
+			[Bindable]
+			public var zoom:Number = 1;
+			
+			private function pdf():void
+			{
+				dispatchEvent(new Event("pdf"));
+			}
+						
+			private function print():void
+			{
+				dispatchEvent(new Event("print"));
+			}  
+			
+			private function previous():void
+			{
+				dispatchEvent(new Event("previous"));
+			}
+			
+			private function next():void
+			{
+				dispatchEvent(new Event("next"));
+			}
+			
+			private function zoomIn():void {
+				dispatchEvent(new Event("zoomIn"));
+			}
+			
+			private function zoomOut():void
+			{
+				dispatchEvent(new Event("zoomOut"));
+			}
+																	          			
+		]]>
+	</mx:Script>
+	<mx:HBox left="0" right="0" top="0" bottom="0" horizontalGap="3">	
+		<mx:Canvas width="100%" height="30" backgroundColor="#dedede">
+		</mx:Canvas>
+	</mx:HBox>
+	<mx:HBox horizontalGap="0">
+		<mx:Button width="22" height="22" icon="{printIcon}" toolTip="Print" click="print()"/>
+		<mx:Button width="22" height="22" icon="{pdfIcon}" toolTip="Export to PDF" click="pdf()"/>
+	</mx:HBox>
+	<mx:VRule height="100%"/>
+	<mx:HBox horizontalGap="0">
+		<mx:Button width="22" height="22" icon="{zoomOutIcon}" toolTip="Zoom Out" click="zoomOut()"/>
+		<mx:Button icon="{zoomInIcon}" toolTip="Zoom In" click="zoomIn()" height="22" width="22"/>
+		<mx:Label text="{(zoom*100)+&quot;%&quot;}" height="22"/>
+	</mx:HBox>
+	<mx:VRule height="100%"/>
+	<mx:HBox horizontalGap="0" verticalCenter="0">
+		<mx:Button width="22" height="22" icon="{previousIcon}" toolTip="Previous Page" click="previous()"/>
+		<mx:Button width="22" height="22" icon="{nextIcon}" toolTip="Next Page" click="next()"/>
+		<print:PagesButton id="pages" pageChanged="pageNumberChangeHandler(event)" pageNumber="{pageNumber}" pageCount="{pageCount}"/>
+	</mx:HBox>
+</mx:ApplicationControlBar>

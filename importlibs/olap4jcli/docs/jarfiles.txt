@@ -1,0 +1,14 @@
+com.springsource.edu.emory.mathcs.backport_3.1.0.jar                
+commons-collections-3.2.2.jar                                       
+commons-dbcp-1.4.jar                                                
+commons-pool-1.5.4.jar                                              
+commons-vfs2-2.0.jar                                                
+eigenbase-properties-1.1.5.jar    
+servlet-api-2.4.jar
+xercesImpl.jar                                  
+mondrian-3.1.1.12687.jar                                            
+olap4j-1.2.0.jar                                                    
+log4j-1.2.17.jar                  
+olap4j-xmla-1.2.0.jar                                               
+retroweaver-rt-1.2.4.jar   
+dm.jar                                         

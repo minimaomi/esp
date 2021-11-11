@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Config Version="2">
+    <Runtime>
+        <DBList encryptLevel="0">
+            <DB name="hsql">
+                <property name="url" value="jdbc:hsqldb:hsql://192.168.0.11/demo"/>
+                <property name="driver" value="org.hsqldb.jdbcDriver"/>
+                <property name="type" value="13"/>
+                <property name="user" value="SA"/>
+                <property name="password"/>
+                <property name="batchSize" value="0"/>
+                <property name="autoConnect" value="false"/>
+                <property name="useSchema" value="false"/>
+                <property name="addTilde" value="false"/>
+                <property name="needTransContent" value="false"/>
+                <property name="needTransSentence" value="false"/>
+                <property name="caseSentence" value="false"/>
+            </DB>
+            <DB name="mysql">
+                <property name="url" value="jdbc:mysql://192.168.0.11:3306/dbtest?useSSL=false"/>
+                <property name="driver" value="com.mysql.jdbc.Driver"/>
+                <property name="type" value="10"/>
+                <property name="user" value="root"/>
+                <property name="password" value="rootpwd"/>
+                <property name="batchSize" value="0"/>
+                <property name="autoConnect" value="false"/>
+                <property name="useSchema" value="false"/>
+                <property name="addTilde" value="false"/>
+                <property name="needTransContent" value="false"/>
+                <property name="needTransSentence" value="false"/>
+                <property name="caseSentence" value="false"/>
+            </DB>
+        </DBList>
+        <Esproc>
+            <license>D:\works\license\2020\esproc.xml</license>
+            <charSet>GBK</charSet>
+            <dfxPathList>
+                <dfxPath>D:\Program Files\raqsoft\esProc\demo</dfxPath>
+            </dfxPathList>
+            <dateFormat>yyyy-MM-dd</dateFormat>
+            <timeFormat>HH:mm:ss</timeFormat>
+            <dateTimeFormat>yyyy-MM-dd HH:mm:ss</dateTimeFormat>
+            <mainPath/>
+            <tempPath/>
+            <bufSize>65536</bufSize>
+            <localHost/>
+            <localPort>0</localPort>
+            <parallelNum>1</parallelNum>
+            <simpleTableBlockSize/>
+            <nullStrings>nan,null,n/a</nullStrings>
+            <fetchCount>9999</fetchCount>
+            <extLibsPath>D:\Program Files\raqsoft\esProc\extlib</extLibsPath>
+            <importLibs>
+                <lib>hdfscli</lib>
+                <lib>MongoCli</lib>
+            </importLibs>
+        </Esproc>
+        <Logger>
+            <Level>DEBUG</Level>
+        </Logger>
+    </Runtime>
+    <JDBC>
+    </JDBC>
+</Config>

@@ -1,0 +1,699 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 
+*********************************************************************
+xiugaiban
+*********************************************************************
+-->
+<mx:Spacer xmlns:mx="http://www.adobe.com/2006/mxml">
+	<mx:Component className="PopupPanel">
+		<mx:TitleWindow layout="absolute" showCloseButton="true" close="close()">
+			
+			<mx:ViewStack id="showVs" width="100%" height="100%"/>
+			<mx:Script>
+				<![CDATA[
+					import mx.collections.ArrayCollection;
+					import mx.containers.Canvas;
+					import mx.controls.Alert;
+					import mx.core.UIComponent;
+					import mx.managers.PopUpManager;
+					
+					private function close():void
+					{
+						PopUpManager.removePopUp(this);
+					}
+					public function addPage(imgs:ArrayCollection):void
+					{
+						showVs.removeAllChildren();
+						pageLabel.text = imgs.length == 0?"0/0":"1/" + imgs.length;
+						
+						for each(var obj:Bitmap in imgs)
+						{
+							obj.scaleX = (width - viewMetrics.left - viewMetrics.right) / obj.width;
+							obj.scaleY = (height - viewMetrics.top - viewMetrics.bottom) / obj.height;
+							var canvas:Canvas = new Canvas();
+							var component:UIComponent = new UIComponent();
+							component.addChild(obj);
+							
+							canvas.addChild(component);
+							showVs.addChild(canvas);
+						}
+						showVs.selectedIndex = 0;
+					}
+					
+					private function nextPage():void
+					{
+						if (showVs.selectedIndex < showVs.numChildren - 1)
+						{
+							showVs.selectedIndex = showVs.selectedIndex + 1;
+							pageLabel.text = (showVs.selectedIndex + 1) + "/" + showVs.numChildren;
+						}
+					}
+					
+					private function previousPage():void
+					{
+						if (showVs.selectedIndex > 0)
+						{
+							showVs.selectedIndex = showVs.selectedIndex - 1;
+							pageLabel.text = (showVs.selectedIndex + 1) + "/" + showVs.numChildren;
+						}
+					}
+					
+					public var printJob:Function = null;
+					private function doPrint():void
+					{
+						if (printJob != null)
+						{
+							printJob();
+						}
+						close();
+					}
+					
+				]]>
+			</mx:Script>
+			<mx:ControlBar>
+				<mx:Button label="上一页" click="previousPage()"/>
+				<mx:Button label="下一页" click="nextPage()"/>
+				<mx:Button label="打  印" click="doPrint()"/>
+				<mx:Button label="关  闭" click="close()"/>
+				<mx:Spacer width="100%"/>
+				<mx:Label id="pageLabel" text="0/0"/>
+			</mx:ControlBar>
+		</mx:TitleWindow>
+	</mx:Component>
+	<mx:Script>
+		<![CDATA[
+			import mx.core.Container;
+			import mx.controls.Alert;
+			import mx.managers.PopUpManager;
+			import mx.collections.ArrayCollection;
+			import flash.display.DisplayObject;
+			import flash.display.Loader;
+			import flash.display.Sprite;
+			import flash.display.Stage;
+			import flash.geom.Rectangle;
+			import flash.printing.PrintJob;
+			import flash.printing.PrintJobOptions;
+			import mx.core.Application;
+			import mx.core.IFlexDisplayObject;
+			import mx.core.IUIComponent;
+			import mx.core.UIComponent;
+			import mx.core.UIComponentGlobals;
+			import mx.core.mx_internal;
+			import mx.core.IMXMLObject;
+			import mx.printing.FlexPrintJobScaleType;
+			import mx.containers.Panel;
+			
+			use namespace mx_internal;
+			
+			/**
+			 *  @private
+			 */
+			private var printJob:PrintJob = null;
+			
+			private var preViewPanel:PopupPanel;
+			
+			private var imgList:ArrayCollection = new ArrayCollection();
+			
+			private var _pageHeight:Number = 806;
+			private var options:PrintJobOptions = new PrintJobOptions();
+			
+			//-------------------------------
+			//        纸张默认为A4纸竖�?
+			//-------------------------------
+			
+			//----------------------
+			//        纸张高度
+			//----------------------
+			public function get pageHeight():Number
+			{
+				return _pageHeight;
+			}
+			
+			public function set pageHeight(ph:Number):void
+			{
+				this._pageHeight = ph;
+			}
+			
+			//----------------------
+			//        纸张宽度
+			//----------------------
+			private var _pageWidth:Number = 560;
+			
+			public function get pageWidth():Number
+			{
+				return _pageWidth;
+			}
+			
+			public function set pageWidth(pw:Number):void
+			{
+				this._pageWidth = pw;
+			}
+			
+			//----------------------
+			//    printAsBitmap
+			//----------------------
+			private var _printAsBitmap:Boolean = true;
+			
+			public function get printAsBitmap():Boolean
+			{
+				return _printAsBitmap;
+			}
+			
+			public function set printAsBitmap(value:Boolean):void
+			{
+				_printAsBitmap = value;
+			}
+			
+			//---------------------------
+			//    打印预览窗口弹出的容器对�?
+			//---------------------------
+			private var app:Container = null;
+			
+			public function set container(container:Container):void
+			{
+				app = container;
+			}
+			
+			//---------------------------
+			//    打印伸缩类型，默认为匹配宽度
+			//---------------------------
+			private var _scaleType:String = "matchWidth";
+			public function set scaleType(scaletype:String):void
+			{
+				_scaleType = scaletype;
+			}
+			public function get scaleType():String
+			{
+				return _scaleType;
+			}
+			/**
+			 * 得到打印机设定的打印纸的高度和宽度�?
+			 * 会弹出一个打印提示框�?
+			 * 点击打印按钮才能打印纸的高度和宽度，但是不会真的打印�?
+			 * 
+			 * 成功时返回一个Object对象，直接取pageWidth和pageHeight属性就可以�?
+			 * 失败时返回null
+			 * 
+			 * 这个方法可以用来在编码期间得到打印纸的信息，不推荐在程序中使用�?
+			 */
+			public function getPageInfo():Object
+			{
+				var printJ:PrintJob = new PrintJob();
+				var ok:Boolean = printJ.start();
+				var rs:Object = null
+				if (ok)
+				{
+					_pageWidth = printJ.pageWidth;
+					_pageHeight = printJ.pageHeight;
+					printJ.send();
+					rs = new Object();
+					rs.pageWidth = _pageWidth;
+					rs.pageHeight = _pageHeight;
+				}
+				
+				return rs;
+			}
+			
+			//---------------------------
+			//    打印对象
+			//---------------------------
+			private var printObj:ArrayCollection = new ArrayCollection();
+			
+			public function getPageCount():int{
+				return printObj.length;
+			}
+
+			public function set printObject(obj:IUIComponent):void
+			{
+				printObj.removeAll();
+				printObj.addItem(obj);
+			}
+			
+			public function addPrintObject(obj:IUIComponent):void
+			{
+				printObj.addItem(obj);
+			}
+			
+			public function addPrintObject1(obj:Sprite):void
+			{
+				printObj.addItem(obj);
+			}
+			
+			public function clearPrintObject():void
+			{
+				printObj.removeAll();
+			}
+			
+			//---------------------------
+			//    打印预览窗口缩放比例
+			//---------------------------
+			private var _previewPanelRatio:Number = 0.7;
+			
+			public function set previewPanelRatio(ratio:Number):void
+			{
+				_previewPanelRatio * ratio;
+			}
+			
+			public function preview():void
+			{
+				imgList.removeAll();
+				//for each (var po:IUIComponent in printObj)
+				//{
+				//	analyseObject(po,_scaleType);
+				//}
+				app = new Panel();
+				preViewPanel = PopUpManager.createPopUp(app,PopupPanel,true) as PopupPanel;
+				preViewPanel.width =750;;// (_pageWidth + preViewPanel.viewMetrics.left + preViewPanel.viewMetrics.right)  *  _previewPanelRatio ;
+				preViewPanel.height = 620;//(_pageHeight + preViewPanel.viewMetrics.top + preViewPanel.viewMetrics.bottom)  *  _previewPanelRatio ;
+				PopUpManager.centerPopUp(preViewPanel);
+				preViewPanel.addPage(imgList);
+				//    	preViewPanel.printJob = print;
+			}
+			private var datas:ArrayCollection =new ArrayCollection([
+				{col1:1,col2:2,col3:3},{col1:1,col2:2,col3:3},
+				{col1:1,col2:2,col3:3},{col1:1,col2:2,col3:3},
+				{col1:1,col2:2,col3:3},{col1:1,col2:2,col3:3},
+				{col1:1,col2:2,col3:3},{col1:1,col2:2,col3:3},
+				{col1:1,col2:2,col3:3},{col1:1,col2:2,col3:3},
+				{col1:1,col2:2,col3:3},{col1:1,col2:2,col3:3},
+				{col1:1,col2:2,col3:3},{col1:1,col2:2,col3:3},
+				{col1:1,col2:2,col3:3},{col1:1,col2:2,col3:3},
+				{col1:1,col2:2,col3:3},{col1:1,col2:2,col3:3},
+				{col1:1,col2:2,col3:3},{col1:1,col2:2,col3:3},
+				{col1:1,col2:2,col3:3},{col1:1,col2:2,col3:3},
+				{col1:1,col2:2,col3:3},{col1:1,col2:2,col3:3},
+				{col1:1,col2:2,col3:3},{col1:1,col2:2,col3:3},
+				{col1:1,col2:2,col3:3},{col1:1,col2:2,col3:3}
+			]);
+			
+			public function print(w:int,h:int):void
+			{
+				printJob = new PrintJob();
+				
+				if (printJob.start())
+				{
+					for each (var po:Sprite in printObj)
+					{
+						//analyseObject(po,_scaleType,true);
+						//analyseObject1(po,_scaleType,true);
+						var printJobOptions:PrintJobOptions = new PrintJobOptions();
+						printJobOptions.printAsBitmap = false;
+						
+						//var options:PrintJobOptions = new PrintJobOptions();
+						//options.printAsBitmap = false;
+						printJob.addPage(po,new Rectangle(0, 0, w, h),printJobOptions);
+					}
+					
+					//Alert.show("宽："+printJob.paperWidth+";宽："+printJob.paperHeight);
+					printJob.send();
+					
+					clearPrintObject();
+				}
+				
+			}
+			
+			public function printDirect(selectPrinter:String):Boolean
+			{
+				printJob = new PrintJob();
+				if(selectPrinter=="yes"||selectPrinter=="YES"){
+					if (printJob.start())
+					{
+						for each (var po:Sprite in printObj)
+						{
+							//analyseObject(po,_scaleType,true);
+							analyseObject1(po,_scaleType,true);
+						}
+						printJob.send();
+						clearPrintObject();
+						return true;
+					}
+					return false;
+				}
+				else{
+					printJob.start();
+					for each (var po:Sprite in printObj)
+					{
+						//analyseObject(po,_scaleType,true);
+						analyseObject1(po,_scaleType,true);
+					}
+					printJob.send();
+					clearPrintObject();
+					
+					return true;
+				}
+			}
+			
+			private function analyseObject1(obj:Sprite,
+											scaleType:String = "matchWidth", printFlag:Boolean = false):void
+			{
+				
+				var objWidth = obj.width
+				var objHeight = obj.height;
+				
+				//var printJobOptions:PrintJobOptions = new PrintJobOptions();
+				//printJobOptions.printAsBitmap = _printAsBitmap;
+				//var printJobOptions:PrintJobOptions = new PrintJobOptions(true);
+				
+				// options.printAsBitmap = true;
+				
+				printJob.addPage(obj,new Rectangle(0, 0, objWidth, objHeight));
+				
+			}
+			
+			
+			private function analyseObject(obj:IUIComponent,
+										   scaleType:String = "matchWidth", printFlag:Boolean = false):void
+			{
+				var objWidth:Number;
+				var objHeight:Number;
+				
+				var objPercWidth:Number;
+				var objPercHeight:Number;
+				
+				var n:int;
+				var i:int;
+				var j:int;
+				
+				var child:IFlexDisplayObject;
+				var childPercentSizes:Object = {};
+				
+				var appExplicitWidth:Number;
+				var appExplicitHeight:Number;
+				
+				if (obj is Application)
+				{
+					n = Application(obj).numChildren
+					for (i = 0; i < n; i++)
+					{
+						child = IFlexDisplayObject(Application(obj).getChildAt(i));
+						
+						if (child is UIComponent &&
+							(!isNaN(UIComponent(child).percentWidth) ||
+								!isNaN(UIComponent(child).percentHeight)))
+						{
+							childPercentSizes[child.name] = {};
+							
+							if (!isNaN(UIComponent(child).percentWidth) &&
+								isNaN(UIComponent(child).explicitWidth))
+							{
+								childPercentSizes[child.name].percentWidth =
+									UIComponent(child).percentWidth;
+								UIComponent(child).percentWidth = NaN;
+								UIComponent(child).explicitWidth =
+									UIComponent(child).width;
+							}
+							
+							if (!isNaN(UIComponent(child).percentHeight) &&
+								isNaN(UIComponent(child).explicitHeight))
+							{
+								childPercentSizes[child.name].percentHeight =
+									UIComponent(child).percentHeight;
+								UIComponent(child).percentHeight = NaN;
+								UIComponent(child).explicitHeight =
+									UIComponent(child).height;
+							}
+						}
+					}
+					
+					if (!isNaN(UIComponent(obj).explicitWidth) 
+						&& !isNaN(UIComponent(obj).explicitHeight))
+					{
+						appExplicitWidth = UIComponent(obj).explicitWidth;
+						appExplicitHeight = UIComponent(obj).explicitHeight;
+						
+						UIComponent(obj).explicitWidth = NaN;
+						UIComponent(obj).explicitHeight = NaN;
+						
+						UIComponent(obj).measuredWidth = appExplicitWidth;
+						UIComponent(obj).measuredHeight = appExplicitHeight;
+					}
+					
+					if (isNaN(obj.percentWidth) && isNaN(obj.percentHeight))
+						UIComponent(obj).invalidateSizeFlag = false;
+					
+					UIComponent(obj).validateSize();
+					
+					objWidth = obj.measuredWidth;
+					objHeight = obj.measuredHeight;
+				}
+				else
+				{
+					// Lock if the content is percent width or height.
+					if (!isNaN(obj.percentWidth) && isNaN(obj.explicitWidth))
+					{
+						objPercWidth = obj.percentWidth;
+						obj.percentWidth = NaN;
+						obj.explicitWidth = obj.width;
+					}
+					
+					if (!isNaN(obj.percentHeight) && isNaN(obj.explicitHeight))
+					{
+						objPercHeight = obj.percentHeight;
+						obj.percentHeight = NaN;
+						obj.explicitHeight = obj.height;
+					}
+					
+					objWidth = obj.getExplicitOrMeasuredWidth();
+					objHeight = obj.getExplicitOrMeasuredHeight();
+				}
+				
+				var widthRatio:Number = _pageWidth/objWidth;
+				var heightRatio:Number = _pageHeight/objHeight;
+				
+				var ratio:Number = 1;
+				
+				if (scaleType == FlexPrintJobScaleType.SHOW_ALL)
+				{
+					// Smaller of the two ratios for showAll.
+					ratio = (widthRatio < heightRatio) ? widthRatio : heightRatio;
+				}
+				else if (scaleType == FlexPrintJobScaleType.FILL_PAGE)
+				{
+					// Bigger of the two ratios for fillPage.
+					ratio = (widthRatio > heightRatio) ? widthRatio : heightRatio;
+				}
+				else if (scaleType == FlexPrintJobScaleType.NONE)
+				{
+				}
+				else if (scaleType == FlexPrintJobScaleType.MATCH_HEIGHT)
+				{
+					ratio = heightRatio;
+				}
+				else
+				{
+					ratio = widthRatio;
+				}
+				//预览用快�?
+				var imgJob:BitmapData = this.getBitmapData(UIComponent(obj));
+				
+				// Scale it to the required value.
+				obj.scaleX *= ratio;
+				obj.scaleY *= ratio;
+				
+				UIComponentGlobals.layoutManager.usePhasedInstantiation = false;
+				UIComponentGlobals.layoutManager.validateNow();	
+				
+				var arrPrintData:Array = prepareToPrintObject(obj);
+				
+				if (obj is Application)
+				{
+					objWidth *= ratio;
+					objHeight *= ratio;
+				}
+				else
+				{
+					objWidth = obj.getExplicitOrMeasuredWidth();
+					objHeight = obj.getExplicitOrMeasuredHeight();
+				}
+				
+				// Find the number of pages required in vertical and horizontal.
+				var hPages:int = Math.ceil(objWidth / _pageWidth);
+				var vPages:int = Math.ceil(objHeight / _pageHeight);
+				
+				// when sent to addPage, scaling is to be ignored.
+				var incrX:Number = _pageWidth / ratio;
+				var incrY:Number = _pageHeight / ratio;
+				
+				var lastPageWidth:Number = (objWidth % _pageWidth) / ratio;
+				var lastPageHeight:Number = (objHeight % _pageHeight) / ratio;
+				
+				for (j = 0; j < vPages; j++)
+				{
+					for (i = 0; i < hPages; i++)
+					{
+						var r:Rectangle =
+							new Rectangle(i * incrX, j * incrY, incrX, incrY);
+						
+						// For last pages send only the remaining amount
+						// so that rest of the paper is printed white
+						// else it prints that in gray.
+						if (i == hPages - 1 && lastPageWidth != 0)
+							r.width = lastPageWidth;
+						
+						if (j == vPages - 1 && lastPageHeight != 0)
+							r.height = lastPageHeight;
+						
+						// The final edge may have got fractioned as
+						// contents may not be complete multiple of pageWidth/Height.
+						// This may result in a blank area at the end of page.
+						// Tthis rounding off ensures no small blank area in the end 
+						// but results in some part of next page getting reprinted
+						// this page but it does not result in loss of any information.
+						r.width = Math.ceil(r.width);
+						r.height = Math.ceil(r.height);
+						
+						if (printFlag)
+						{	
+							var printJobOptions:PrintJobOptions = new PrintJobOptions();
+							printJobOptions.printAsBitmap = _printAsBitmap;
+							printJob.addPage(Sprite(obj), r, printJobOptions);
+						}
+						else
+						{
+							var bmp:BitmapData = new BitmapData(incrX,incrY);
+							bmp.copyPixels(imgJob,r,new Point());
+							imgList.addItem(new Bitmap(bmp));
+						}
+					}
+				}
+				
+				finishPrintObject(obj, arrPrintData);
+				
+				// Scale it back.
+				obj.scaleX /= ratio;
+				obj.scaleY /= ratio;
+				
+				if (obj is Application)
+				{
+					if (!isNaN(appExplicitWidth)) //&& !isNaN(appExplicitHeight))
+					{
+						UIComponent(obj).setActualSize(appExplicitWidth,appExplicitHeight);
+						//UIComponent(obj).explicitWidth = appExplicitWidth;
+						//UIComponent(obj).explicitHeight = appExplicitHeight;
+						
+						appExplicitWidth = NaN;
+						appExplicitHeight = NaN;
+						
+						UIComponent(obj).measuredWidth = 0;
+						UIComponent(obj).measuredHeight = 0;
+					}
+					
+					// The following loop is required only for scenario
+					// where application may have a few children
+					// with percent width or height.
+					n = Application(obj).numChildren
+					for (i = 0; i < n; i++)
+					{
+						child = IFlexDisplayObject(Application(obj).getChildAt(i));
+						if (child is UIComponent && childPercentSizes[child.name])
+						{
+							var childPercentSize:Object = childPercentSizes[child.name];
+							if (childPercentSize &&
+								!isNaN(childPercentSize.percentWidth))
+							{
+								UIComponent(child).percentWidth =
+									childPercentSize.percentWidth;
+								UIComponent(child).explicitWidth = NaN;
+							}
+							
+							if (childPercentSize &&
+								!isNaN(childPercentSize.percentHeight))
+							{
+								UIComponent(child).percentHeight =
+									childPercentSize.percentHeight;
+								UIComponent(child).explicitHeight = NaN;
+							}
+						}
+					}
+					UIComponent(obj).invalidateSizeFlag = false;
+					UIComponent(obj).validateSize();
+				}
+				else
+				{
+					// Unlock if the content was percent width or height.
+					if (!isNaN(objPercWidth))
+					{
+						obj.percentWidth = objPercWidth;
+						obj.explicitWidth = NaN;
+					}
+					
+					if (!isNaN(objPercHeight))
+					{
+						obj.percentHeight = objPercHeight;
+						obj.explicitHeight = NaN;
+					}
+				}
+				
+				UIComponentGlobals.layoutManager.usePhasedInstantiation = false;
+				UIComponentGlobals.layoutManager.validateNow();	
+			}
+			
+			private function getBitmapData(target : UIComponent) : BitmapData
+			{
+				var bd : BitmapData = new BitmapData(target.width, target.height );
+				var m : Matrix = new Matrix();
+				bd.draw(target, m);
+				return bd;
+			}
+			
+			/**
+			 *  @private
+			 *  Prepare the target and its parents to print.
+			 *  If the content is inside a Container with scrollBars,
+			 *  it still gets printed all right. 
+			 */
+			private function prepareToPrintObject(target:IUIComponent):Array
+			{
+				var arrPrintData:Array = [];
+				
+				var obj:DisplayObject 
+				= (target is DisplayObject) ? DisplayObject(target) : null;
+				var index:Number = 0;
+				
+				while (obj)
+				{
+					if (obj is UIComponent)
+						arrPrintData[index++] 
+						= UIComponent(obj).prepareToPrint(UIComponent(target));
+					else if (obj is DisplayObject && !(obj is Stage))
+					{
+						arrPrintData[index++] = DisplayObject(obj).mask;
+						DisplayObject(obj).mask = null;
+					}
+					
+					obj = (obj.parent is DisplayObject) ?
+						DisplayObject(obj.parent) :
+						null;
+				}
+				
+				return arrPrintData;
+			}
+			
+			/**
+			 *  @private
+			 *  Reverts the target and its parents back from Print state, 
+			 */
+			private function finishPrintObject(target:IUIComponent,
+											   arrPrintData:Array):void
+			{
+				var obj:DisplayObject 
+				= (target is DisplayObject) ? DisplayObject(target) : null;
+				var index:Number = 0;
+				while (obj)
+				{
+					if (obj is UIComponent)
+						UIComponent(obj).finishPrint(arrPrintData[index++],
+							UIComponent(target));
+					else if (obj is DisplayObject && !(obj is Stage))
+					{
+						DisplayObject(obj).mask = arrPrintData[index++];
+					}
+					
+					obj = (obj.parent is DisplayObject) ?
+						DisplayObject(obj.parent) :
+						null;
+				}
+			}
+		]]>
+	</mx:Script>
+</mx:Spacer>

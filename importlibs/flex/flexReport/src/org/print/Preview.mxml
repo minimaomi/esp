@@ -1,0 +1,893 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml"
+		   xmlns:s="library://ns.adobe.com/flex/spark"
+		   width="100%" 
+		   height="100%" 
+		   
+		   xmlns:print="org.print.*"
+		   xmlns:progress="user.*"
+		   xmlns:hi="to9m.*"	   
+		   >
+
+	<mx:Script>
+		<![CDATA[
+			import mx.controls.Alert;
+			import com.report.DataParse;
+			import com.report.ReportDraws;
+			
+			import flash.printing.PrintJob;
+			import flash.printing.PrintJobOptions;
+			
+			import mx.collections.ArrayCollection;
+			import mx.collections.ArrayList1;
+			
+			import mx.core.IFlexDisplayObject;
+			import mx.core.SpriteAsset;
+			import mx.core.UIComponent;
+			import mx.events.CloseEvent;
+			import mx.managers.PopUpManager;
+			import mx.printing.FlexPrintJob;
+			import mx.states.SetProperty;
+			import mx.utils.StringUtil;
+			
+			import org.print.FirstWindow;			
+			import spark.components.Label;			
+			import to9m.SuperPrintJob;
+			import mx.graphics.codec.PNGEncoder;  
+			import mx.logging.LogLogger;   
+			import mx.logging.ILogger;   
+			import mx.logging.Log;   
+			import mx.logging.LogEventLevel;   
+			import mx.logging.targets.TraceTarget;   
+			
+			private var logger:ILogger;   			
+			public var firstWindow:FirstWindow = new FirstWindow();
+			
+			[Bindable]
+			private var pages:Array;
+			
+			[Bindable]
+			private var thumbnails:Array; 
+			private var _serverUrl:String;
+			
+			private var pageCount:int = 0;
+			private var paperWidth:int = 0;
+			private var paperHeight:int = 0;
+			private var leftMargin:Number = 1;
+			private var rightMargin:Number = 1;
+			private var topMargin:Number = 1;
+			private var bottomMargin:Number = 1;
+			
+			private var ImageableWidth:int;
+			private var ImageableHeight:int;
+			
+			private var pageUrl="";
+			private var iniFirst:Boolean = false;
+			private var stageW:int;
+			private var stageH:int;
+			private var currPageIndex:int = 1;
+			
+			private var pagesList:ArrayList1 = null;
+			private var pagesFace:ArrayList1 = new ArrayList1();
+			private var Orientation:int= 1;
+			
+			private var encoding:String="gbk";
+			
+			private var shrinkrate:Number=1.0;
+			private var chromeInt:int=1;
+			//[Embed(source="myload.swf")]  
+			public var swf:Class;  
+			var timerdraw:Timer;
+			var timerdata:Timer;
+			var mill0 = 0;
+			private var language:String="cn";
+			public function   serverUrl(url:String,stagew:int,stageh:int,encod:String,lang:String):void{
+				//Alert.show(url);
+				thumbs.setLabels(lang);
+				this.language=lang;
+				this.encoding = encod;
+				
+				timerdraw = new Timer(100, 500);   	   
+				timerdraw.addEventListener(flash.events.TimerEvent.TIMER, onTimerrun);
+				
+				//load.addChild(sprite);
+				
+				var uc:UIComponent = new UIComponent();
+				uc.addChild(sprite);
+				Candrawing.addChild(uc);
+				
+				var mydate0:Date = new Date();
+				mill0=mydate0.getMilliseconds();
+				
+				stageW = stagew;
+				stageH = stageh;
+				
+				iniFirst = true;
+				pageUrl = url;
+				currPageIndex = 1;
+				getPage(pageUrl,1);
+				
+			}
+			
+			private var p:int = 115;
+			private static var step  = 0;
+			private var sprite:Sprite = new  Sprite();
+			
+			public function onTimerrun(event:TimerEvent):void
+			{
+				
+				sprite.graphics.lineStyle(0,0,0);
+				sprite.graphics.beginFill(int(0xffffff),1);
+				sprite.graphics.drawCircle(p,16,2);
+				sprite.graphics.endFill();
+
+				p+=10;
+				step++;
+				//				trace(p);
+				if(step>=8){
+					sprite.graphics.clear();
+					p=115;
+					step=0;
+				}
+				
+			}
+			
+			public function nextPage():void
+			{
+				if (thumbs.pageNumber < thumbs.pageCount) {
+					thumbs.pageNumber++;
+				}
+				
+				//getPage(pageUrl,thumbs.pageNumber);
+				getSavedPage(thumbs.pageNumber);
+				butsate();
+			}
+			
+			public function previousPage():void
+			{
+				//_doc.previousPage();
+				if (thumbs.pageNumber > 1) {
+					thumbs.pageNumber--;
+				}
+				
+				//getPage(pageUrl,thumbs.pageNumber);
+				getSavedPage(thumbs.pageNumber);
+				butsate();
+			}
+			
+			public function firstPage():void
+			{
+				//_doc.nextPage();
+				thumbs.pageNumber = 1;
+				//getPage(pageUrl,thumbs.pageNumber);
+				getSavedPage(thumbs.pageNumber);
+				butsate();
+			}
+			
+			public function lastPage():void
+			{
+				//_doc.previousPage();
+				
+				thumbs.pageNumber = thumbs.pageCount;
+				//getPage(pageUrl,thumbs.pageNumber);
+				getSavedPage(thumbs.pageNumber);
+				butsate();
+			}
+			
+			private function pageNumberChangeHandler(event:Event):void
+			{
+				//thumbs.pageNumber = goto(thumbs.inputNumber);
+				
+				//getPage(pageUrl,thumbs.pageNumber);
+				getSavedPage(thumbs.pageNumber);
+				butsate();
+			}
+			private function columnChangePage():void{
+				
+				if(thumbs.columns.value<1)
+					thumbs.columns.value = 1;
+				
+				var  newUrl:String = pageUrl;
+				newUrl = newUrl+"&columns="+thumbs.columns.value+"&halign="+thumbs.halignList.selectedItem.data;
+				getPage(newUrl,thumbs.pageNumber);
+				
+				//
+				butsate();
+				
+				//var late:Timer = new Timer(1000,1); 
+				//late.addEventListener(TimerEvent.TIMER_COMPLETE,function(event:TimerEvent):void {  
+				//	thumbs.initData(page.pageCount);
+				//});  
+				//late.start();  
+				
+			}
+			private function shrinkChangePage():void{
+				var  newUrl:String = pageUrl;
+				newUrl = newUrl+"&shrink="+thumbs.shrink.selectedItem.data;
+				getPage(newUrl,thumbs.pageNumber);
+
+				butsate();				
+			}
+			
+			private function halignChange():void{				
+				var  newUrl:String = pageUrl;
+				newUrl = newUrl+"&columns="+thumbs.columns.value+"&halign="+thumbs.halignList.selectedItem.data;
+				getPage(newUrl,thumbs.pageNumber);
+			}
+			
+			private function clearColorChange():void{
+				var  clearurl:String = pageUrl;
+				var isclear:String = "false";
+				if(thumbs.clearColor.selected){
+					isclear = "true";
+					thumbs.clearLayer.selected=false;
+				}
+				clearurl = clearurl+"&isClearColor="+isclear;
+				getPage(clearurl,thumbs.pageNumber);
+			}
+			private function clearLayerChange():void{
+				var  clearurl:String = pageUrl;
+				var isclear:String = "false";
+				if(thumbs.clearLayer.selected){
+					isclear = "true";
+					thumbs.clearColor.selected=false;
+				}
+				clearurl = clearurl+"&isClearImageLayer="+isclear;
+				getPage(clearurl,thumbs.pageNumber);
+			}
+			private function butsate():void{
+				
+				if(thumbs.pageNumber==1){
+					thumbs.firBut.selected = true;
+					thumbs.preBut.selected = true;
+				}
+				else{
+					thumbs.firBut.selected = false;
+					thumbs.preBut.selected = false;
+				}
+				if(thumbs.pageNumber==thumbs.pageCount){
+					thumbs.lasBut.selected = true;
+					thumbs.nexBut.selected = true;
+				}
+				else{
+					thumbs.lasBut.selected = false;
+					thumbs.nexBut.selected = false;
+				}
+			}
+			
+			public  function getPage(url:String,pageIndex:int):void
+			{
+				pagesList = new ArrayList1();
+				drawstart();
+				
+				currPageIndex = pageIndex;
+				loaderMapData(url);
+			}
+			
+			private function testHandler(event:Event):void{
+				var report:ReportDraws = new ReportDraws(null);
+				var subReport:ReportDraws = new ReportDraws(report);
+				var data:String = event.target.data;
+				var dp:DataParse = new DataParse(subReport);
+				report.drawRect(0,0,paperWidth,paperHeight);//先画背景，避免横向打印
+				dp.dataparse(data,0,0,paperWidth*page.zoom,paperHeight*page.zoom);
+				getBitmap(report);
+			}
+			
+			private  var loader:URLStream;
+			public  function loaderMapData(mapUrl:String):void  
+			{
+				loader  = new URLStream(); 
+				var request:URLRequest = new URLRequest(mapUrl); 
+				
+				loader.load(request);
+				loader.addEventListener(Event.COMPLETE, progressHandler);  
+			}
+			
+			private function progressHandler(event:Event):void {
+				
+				var pagenum:int = loader.readInt();
+				this.pageCount = pagenum;
+				thumbs.initData(pageCount);
+				
+				//var totalSize:int = loader.readInt();
+				
+				var pw:int = loader.readInt();
+				this.paperWidth = pw;
+				var ph:int = loader.readInt();
+				this.paperHeight = ph;
+				
+				var rate1:Number = 930/this.paperWidth;
+				var rate2:Number = 640/this.paperHeight;
+				page.zoom = rate2;
+				if(rate1<rate2){
+					page.zoom = rate1;
+				}
+				page.zhengyeRate = page.zoom;
+				
+				var  left:int = loader.readInt();
+				var  right:int = loader.readInt();
+				var  top:int = loader.readInt();
+				var  bottom:int  =loader.readInt();
+				
+				if (this.openner!=null){
+					left = Math.ceil(openner.leftMargin.value * 72 / 25.4);
+					right = Math.ceil(openner.rightMargin.value * 72 / 25.4);
+					top = Math.ceil(openner.topMargin.value * 72 / 25.4);
+					bottom = Math.ceil(openner.bottomMargin.value * 72 / 25.4);
+				}
+				
+				for(var i:int=0;i<pagenum;i++){
+					var size:int = loader.readInt();
+					
+					var bytes:String = loader.readMultiByte(size,"UTF-8");//StringUtil.trim(this.encoding)
+					pagesList.setItemAt(bytes,i);
+				}
+				var Orient:int = loader.readInt();
+				this.Orientation = Orient;
+				this.ImageableWidth=loader.readInt();
+				this.ImageableHeight=loader.readInt();
+				thumbs.shrink.selectedIndex = loader.readInt()-1;
+				
+				shrinkrate=1;
+				if(thumbs.shrink.selectedItem.data==2){
+					shrinkrate = this.ImageableWidth/this.paperWidth;
+				}
+				else if(thumbs.shrink.selectedItem.data==3){
+					shrinkrate = this.ImageableHeight/this.paperHeight;
+				}
+				this.chromeInt = loader.readInt();
+				
+				//Alert.show(shrinkrate.toString());
+				
+				this.leftMargin = left;
+				this.rightMargin  = right;
+				this.topMargin = top;
+				this.bottomMargin =bottom;
+				
+				timerdata = new Timer(500, 0);   	   
+				timerdata.addEventListener(flash.events.TimerEvent.TIMER, completeHander1);
+				timerdata.start();
+				
+				page.setSize(paperWidth*page.zoom,paperHeight*page.zoom);
+				
+			}
+			private function completeHander1(event:TimerEvent):void
+			{
+				if(pageCount>0&&pagesList.length==pageCount){
+					
+					this.timerdata.stop();
+					drawstop();
+					draw(pagesList.getItemAt(currPageIndex-1));
+				}
+			}
+			private function convertByteArrayToString(bytes:ByteArray):String
+			{
+				var str:String;
+				if ( bytes ) {
+					bytes.position = 0; // 在将 ByteArray 转换成 String中应注意将 bytes 的 position 设置为 0，切记； 
+					str = bytes.readUTFBytes(bytes.length); // readUTFBytes(length:uint):从字节流中读取一个由 length 参数指定�?UTF-8 字节序列，并返回一个字符串;
+				}
+				return str;
+			}
+			
+			
+			//private var  sc:SvgCanvas = new SvgCanvas();
+			private function draw(data,pageIndex:int=1):void
+			{
+				ReportDraws.defaultScale = page.zoom;
+				var report:ReportDraws = new ReportDraws(null);
+				var subReport:ReportDraws = new ReportDraws(report);
+				var dp:DataParse = new DataParse(subReport);
+				report.drawRect(0,0,paperWidth,paperHeight);
+				dp.dataparse(data,0,0,paperWidth*page.zoom,paperHeight*page.zoom);
+				getBitmap(report);   
+			}
+			
+			private function getBitmap(sf:Sprite):void{				
+				var late:Timer = new Timer(150,1); 
+				late.addEventListener(TimerEvent.TIMER_COMPLETE,function(event:TimerEvent):void {  
+					
+					var bd:BitmapData = new BitmapData(paperWidth*page.zoom,paperHeight*page.zoom, false);
+					var m:Matrix = new Matrix(); //(1, 0, 0, 1, 10*zoom, 10*zoom
+					bd.draw(sf,m);
+					
+					var result:Bitmap = new Bitmap(bd);
+					page.printPreview.source = result;
+					
+					//page.winAlign(paperWidth*page.zoom);
+					
+				});  
+				late.start();  
+				
+			}
+			
+			private function getSavedPage(pageNumber:int):void{
+				var face = pagesFace.getItemAt(pageNumber-1);
+				if(face!=null){
+					var bd:BitmapData = new BitmapData(paperWidth*page.zoom,paperHeight*page.zoom, false);
+					var m:Matrix = new Matrix(); //(1, 0, 0, 1, 10*zoom, 10*zoom
+					bd.draw(face,m);
+					var result:Bitmap = new Bitmap(bd);
+					page.printPreview.source = result;
+				}else {
+					var data = pagesList.getItemAt(pageNumber-1);
+					if(data==null){
+						getPage(pageUrl,pageNumber);
+					}else{
+						ReportDraws.defaultScale = page.zoom;
+						var report:ReportDraws = new ReportDraws(null);
+						var subReport:ReportDraws = new ReportDraws(report);
+						var dp:DataParse = new DataParse(subReport);
+						report.drawRect(0,0,paperWidth,paperHeight);
+						dp.dataparse(data,0, 0, paperWidth*page.zoom,paperHeight*page.zoom);
+						getBitmap(report);
+					}
+				}
+			}
+			
+			private function drawstart():void{
+				Candrawing.visible = true;
+				timerdraw.start();
+			}
+			private function drawstop():void{
+				Candrawing.visible = false;
+				timerdraw.stop();
+			}
+			
+			private function timerReload():void{
+				var late:Timer = new Timer(100,1); 
+				late.addEventListener(TimerEvent.TIMER_COMPLETE,function(event:TimerEvent):void {  
+					
+					ReportDraws.defaultScale = page.zoom;
+					var report:ReportDraws = new ReportDraws(null);
+					var subReport:ReportDraws = new ReportDraws(report);
+					
+					var dp:DataParse = new DataParse(subReport);
+					var data = pagesList.getItemAt(thumbs.pageNumber-1);	 
+					dp.dataparse(data,0,0, paperWidth*page.zoom,paperHeight*page.zoom);
+					getBitmap(report);					
+					
+				});  
+				late.start();  
+			}
+			
+			private function zoomCom(event:Event):void{
+				page.zoomCom(thumbs.comZoom);
+				timerReload();
+			}
+			private function zoomOut():void{
+				page.zoomOut();
+				timerReload();
+				
+			}
+			private function zoomIn():void{
+				page.zoomIn();
+				timerReload();
+			}
+			
+			private var  spj:SuperPrintJob = new SuperPrintJob();
+			private var printCount:int = 0;
+			private var loadedImage:Array= new Array();
+			private function doPrint(normalPrint:Boolean):void{
+				var mypaperWidth:Number = Math.ceil(this.paperWidth * 25.4 / 72);
+				var mypaperHeight:Number = Math.ceil(this.paperHeight * 25.4 / 72);
+				if(mypaperWidth!=210 || mypaperHeight!=297){
+					Alert.show("提示：当前纸张是自定义尺寸(宽"+mypaperWidth+"mm,高"+mypaperHeight+"mm)，请在弹出的打印面板中设置对应的纸张尺寸","警告",
+						Alert.YES,null,Printevent)
+				}else{
+					YsePrint();
+				}
+			}
+			
+			private function Printevent(event:CloseEvent):void  
+			{  
+				if(event.detail==Alert.YES)  
+				{  
+					YsePrint();
+				}  
+			}
+			
+			private function YsePrint():void{
+				if(fontLoaded){	 
+					var sp:int = thumbs.startPagePrint.value;
+					var ep:int =  thumbs.endPagePrint.value;
+					
+					for(var i:int=0;i<pagesList.length;i++){
+						if(sp<0||ep<0)break;
+						if(sp>ep)break;
+						if((i+1)<sp)continue;
+						if((i+1)>ep)continue;
+						
+						//Alert.show(i.toString());
+						
+						var isHP:Boolean = false;//paperWidth>paperHeight;
+						if( this.Orientation==0){
+							isHP  = true;
+						}
+						var data = pagesList.getItemAt(i);
+						ReportDraws.defaultScale = 1;
+						if (this.paperHeight>820){
+							ReportDraws.defaultScale = 0.975;
+						}
+						//ReportDraws.translatedx=300;
+						var report:ReportDraws = new ReportDraws(null, true,myfontFamily);
+						var subReport:ReportDraws = new ReportDraws(report, true,myfontFamily);
+						subReport.setLodedImage(loadedImage);
+						//report.setMargin(leftMargin,topMargin);
+						subReport.setPrintResult(true);
+						var dp:DataParse = new DataParse(subReport);
+
+						if(chromeInt==0){
+							dp.dataparse(data,Math.round(-10/shrinkrate),0,this.paperWidth,this.paperHeight);
+						} else {
+							dp.dataparse(data,0,0,this.paperWidth,this.paperHeight);
+						}
+						report.drawRect(0,0,paperWidth,paperHeight);
+						report.addChildAt(subReport,0);
+						
+						var recMatrix:Matrix =report.transform.matrix;
+						recMatrix.scale(shrinkrate,shrinkrate);
+						//recMatrix.translate(50,50);
+						report.transform.matrix = recMatrix;
+						
+						// Alert.show(report.transform.matrix.tx.toString());
+						if(isHP){
+							//report.transform.matrix.translate(100,100);
+							report.rotation = 90;
+						}
+						
+						var printpages = thumbs.printpages.selectedItem.data;
+						if(printpages=="1"){
+							var p:int = i+1;
+							if(p%2==false){
+								spj.addPrintObject1(report);
+							}
+						}
+						else if(printpages=="2"){
+							if(p%2==true){
+								spj.addPrintObject1(report);
+							}
+						}
+						else{
+							if(1==12){
+								var bd:BitmapData = new BitmapData(paperHeight,paperWidth, false);
+								var m:Matrix = new Matrix(1, 0, 0, 1, 0, -paperWidth*3/4+70); //(1, 0, 0, 1, 10*zoom, 10*zoom
+								trace(m.toString()); 
+								if (report.rotation == 90){
+									m.rotate((90/180)*Math.PI);
+								}
+								trace(m.toString()); 
+								bd.draw(report,m);
+								
+								var fr:Object = new FileReference();  
+								if(fr.hasOwnProperty("save"))
+								{  
+									var encoder:PNGEncoder = new PNGEncoder();  
+									var bdata:ByteArray = encoder.encode(bd);  
+									fr.save(bdata,'chart.png');  
+								}
+								else
+								{  
+									//Alert.show("当前flash player版本不支持此功能,请安10.0.0.0以上版本,"提示");  
+									
+								}  
+								//var result:Bitmap = new Bitmap(bd);
+								//var spt:Sprite=new Sprite();
+								//spt.addChild(result);
+								
+								//report.graphics.lineStyle(2,0);
+								//report.graphics.drawRect(20,20,paperWidth-40,paperHeight-40);
+							}else
+							{
+								spj.addPrintObject1(report);
+							}
+							
+						}
+						printCount++;
+						//subReport.setPrintResult(false);
+					}
+					
+					timerdata = new Timer(500, 0);   	   
+					timerdata.addEventListener(flash.events.TimerEvent.TIMER, printHander);
+					timerdata.start();
+					
+				}
+				else{
+					Alert.show("字体尚在加载中。。。。请稍后再打印！");
+				}
+			}
+			
+			
+			private function printHander(event:TimerEvent):void
+			{	
+				if(loadedImage.length==0){//printCount>=pagesList.length&&
+					printCount = 0;
+					this.timerdata.stop();
+					trace("printing ......");
+					spj.print(this.paperWidth,this.paperHeight);
+				}
+			}
+			
+			//不是通过组建对象生成窗口:每当窗口打开�?弹出式窗口都会重新创建并初始�?
+			private var openner:Object;
+			private function init2():void
+			{
+				var myleft:Number = Math.round(this.leftMargin*25.4/72*shrinkrate);
+				var myright:Number  = Math.round(this.rightMargin*25.4/72*shrinkrate);
+				var mytop:Number = Math.round(this.topMargin*25.4/72*shrinkrate);
+				var bottom:Number = Math.round(this.bottomMargin*25.4/72*shrinkrate);
+				
+				openner = PopUpManager.createPopUp(this, FirstWindow, false);
+				PopUpManager.centerPopUp(openner as IFlexDisplayObject);
+				var ishori:Boolean = false;
+				if(this.Orientation==0){
+					ishori = true;
+				}
+				openner.setLanguae(this.language);
+				openner.setDirection(ishori);
+				openner.setMargin(myleft,myright,mytop,bottom);
+				openner.setcolumns(thumbs.columns.value);
+				openner.sethalignList(int(thumbs.halignList.selectedItem.data));
+				openner.setshrink(thumbs.shrink.selectedItem.data);
+				openner.setclearColor(thumbs.clearColor.selected);
+				openner.setclearLayer(thumbs.clearLayer.selected);
+				
+				openner.addEventListener("pop",getWindowData2);
+			}
+			
+			private function getWindowData2(e:Event):void
+			{
+				var isHori:Boolean = openner.Horizontal.selected;
+				var Orientation:int = 1;
+				if(isHori)Orientation = 0;
+				
+				var left:int = openner.leftMargin.value;
+				var right:int = openner.rightMargin.value;
+				var top:int = openner.topMargin.value;
+				var bottom:int = openner.bottomMargin.value;
+				var shrink:String = openner.shrink.selectedItem.data
+				
+				var halign:int = openner.halignList.selectedItem.data
+				var columns:int = openner.columns.value;
+				var clearColor:Boolean = openner.clearColor.selected;
+				var clearLayer:Boolean = openner.clearLayer.selected;
+				
+				thumbs.columns.value = columns;
+				thumbs.shrink.selectedIndex = int(shrink)-1;
+				if(halign==1)
+					thumbs.halignList.selectedIndex = 0;
+				else if(halign==0)
+					thumbs.halignList.selectedIndex = 1;
+				else if(halign==2)
+					thumbs.halignList.selectedIndex = 2;
+				if(clearColor)
+					thumbs.clearColor.selected=true;
+				else{
+					thumbs.clearColor.selected=false;
+				}
+				if(clearLayer)
+					thumbs.clearLayer.selected=true;
+				else{
+					thumbs.clearLayer.selected=false;
+				}
+				
+				
+				var  resetUrl:String = "";
+				if (pageUrl.indexOf("?")!=-1){
+					resetUrl = pageUrl+"&Orientation="+Orientation+"&left="+left+"&right="+right+"&top="+top+"&bottom="+bottom+"&shrink="+shrink+"&halign="+halign+"&columns="+columns+"&isClearColor="+clearColor+"&isClearImageLayer="+clearLayer;
+				}else{
+					resetUrl = pageUrl+"?Orientation="+Orientation+"&left="+left+"&right="+right+"&top="+top+"&bottom="+bottom+"&shrink="+shrink+"&halign="+halign+"&columns="+columns+"&isClearColor="+clearColor+"&isClearImageLayer="+clearLayer;
+				}
+				
+				try {  
+					getPage(resetUrl,thumbs.pageNumber);
+				}  
+				catch (Error) {  
+					Alert.show("展示有误，请重新选择设置条件");
+				}  
+				
+				
+			}
+			
+			private function doPageset():void{
+				init2();
+			}
+			private function winclose():void{
+				//Alert.show("");
+				ExternalInterface.call("thisWinClose");
+			}
+			
+			private var fontLoaded:Boolean = false;
+			private var myfontFamily:String = "宋体";
+			private function fontLoadComplete(evt:Event):void
+			{
+				try{
+					//Font.registerFont( evt.target.content["PixelFont"] );
+					Font.registerFont(evt.target.content["font_cls1"]);
+					Font.registerFont(evt.target.content["font_cls3"]);
+					Font.registerFont(evt.target.content["font_cls4"]);
+					myfontFamily = "宋体";
+					fontLoaded = true;
+					thumbs.printBut.enabled = true;
+					thumbs.printBut.toolTip = "Print";
+				}
+				catch(e:Error){
+					trace(e.toString());
+				}
+			}
+			
+			private function fontLoadComplete_bak(evt:Event):void
+			{
+				try{
+					initLog();
+					logger.debug("Preview::fontLoadComplete It's the debug");
+					//Font.registerFont( evt.target.content["PixelFont"] );
+					Font.registerFont(evt.target.content["font_cls1"]);
+					logger.debug("Preview::font_cls1 It's the debug");
+					//Font.registerFont(evt.target.content["font_cls2"]);
+					Font.registerFont(evt.target.content["font_cls3"]);
+					logger.debug("Preview::font_cls3 It's the debug");
+					Font.registerFont(evt.target.content["font_cls4"]);
+					logger.debug("Preview::font_cls4 It's the debug");
+					myfontFamily = "宋体";
+					//txt1.setStyle("fontFamily", "04b_08");
+					fontLoaded = true;
+					thumbs.printBut.enabled = true;
+					thumbs.printBut.toolTip = "Print";
+					logger.debug("Preview::thumbs.printBut.enabled=true");
+				}
+				catch(e:Error){
+					trace(e.toString());
+				}
+			}
+			
+			private function initLog():void{   
+				var logTarget:TraceTarget = new TraceTarget();   
+				logger = new LogLogger("xx");   
+				logTarget.filters = ["main"];   
+				logTarget.level = LogEventLevel.ALL;   
+				logTarget.includeCategory = true;   
+				logTarget.includeDate = true;   
+				logTarget.includeLevel = true;   
+				logTarget.includeTime = true;   
+				logTarget.addLogger(logger);   
+				Log.addTarget(logTarget);   
+				//trace("create complete");   
+			}   
+					
+			private var _index:int = 0;
+			private var _loader:Loader;
+			private var __fontObj:Font
+			public function LoadEmbedFont():void
+			{
+				_loader = new Loader();
+				_loader.contentLoaderInfo.addEventListener(Event.COMPLETE, handler_comp);
+				_loader.contentLoaderInfo.addEventListener(IOErrorEvent.IO_ERROR, handler_error);
+				_loader.contentLoaderInfo.addEventListener(SecurityErrorEvent.SECURITY_ERROR, handler_error);
+				
+				_loader.load(new URLRequest('my_yahei.swf'),  new LoaderContext(true ,new ApplicationDomain(null)));	
+			}
+			
+			private function handler_comp($evt:Event):void
+			{
+				var __font:* = _loader.content;
+				//trace("--complete..."+$evt.target.url);
+				if ($evt.target.url.indexOf("my_yahei")>-1 ){
+					Font.registerFont($evt.target.content['font_vista']);
+					_loader.load(new URLRequest('my_song.swf'),  new LoaderContext(true ,new ApplicationDomain(null)));	
+					_index = 1;
+				}else if ($evt.target.url.indexOf("my_song")>-1 ){
+					Font.registerFont($evt.target.content['font_song']);
+					_loader.load(new URLRequest('my_black.swf'),  new LoaderContext(true ,new ApplicationDomain(null)));
+					_index = 2;
+				}else if ($evt.target.url.indexOf("my_black")>-1 ){
+					Font.registerFont(__font.font_black);
+					_loader.load(new URLRequest('my_kai.swf'),  new LoaderContext(true ,new ApplicationDomain(null)));
+					_index = 3;
+				}else if ($evt.target.url.indexOf("my_kai")>-1 ){
+					Font.registerFont(__font.font_kai);
+					//_loader.load(new URLRequest('my_yahei.swf'),  __loaderContext);
+					_index = 4;
+				}
+				if (_index == 4){
+					myfontFamily = "宋体";
+					//txt1.setStyle("fontFamily", "04b_08");
+					fontLoaded = true;
+					thumbs.printBut.enabled = true;
+					thumbs.printBut.toolTip = "Print";
+				}
+			}
+			
+			private function handler_error($evt:Event):void
+			{
+				_index+=1;
+				if (_index==1 /*$evt.target.url.indexOf("my_yahei")>-1 */){
+					_loader.load(new URLRequest('my_song.swf'),  new LoaderContext(true ,new ApplicationDomain(null)));
+				}else if (_index==2 /*$evt.target.url.indexOf("my_song")>-1*/ ){
+					_loader.load(new URLRequest('my_black.swf'), new LoaderContext(true ,new ApplicationDomain(null)));
+				}else if (_index==3 /*$evt.target.url.indexOf("my_black")>-1*/ ){
+					_loader.load(new URLRequest('my_kai.swf'),  new LoaderContext(true ,new ApplicationDomain(null)));
+				}else if (_index==4 /*$evt.target.url.indexOf("my_kai")>-1 */){
+					//_loader.load(new URLRequest('my_yahei.swf'),  __loaderContext);	
+				}	
+				if (_index == 4){
+					myfontFamily = "宋体";
+					//txt1.setStyle("fontFamily", "04b_08");
+					fontLoaded = true;
+					thumbs.printBut.enabled = true;
+					thumbs.printBut.toolTip = "Print";
+				}
+			}
+			
+			public function isChineseString(sVal:String):Boolean
+			{
+				var bRet:Boolean = false; 
+				for(var i:int=0;i<sVal.length;i++){ 
+					var char:String = sVal.substr(i,1); 
+					if(/[^\x00-\xff]/g.test(char)){  //中文加10
+						bRet = true;
+						break;
+					}
+				}
+				return bRet;
+			}
+			
+		]]>
+	</mx:Script>
+	
+	<s:BorderContainer width="100%" height="100%" backgroundImage="bg.png" />
+	<hi:SuperPrintJob id="pj" container="{this}" scaleType="matchHeight"/>
+	<mx:SWFLoader source="FontAssets.swf" complete="fontLoadComplete(event);"/>
+	<mx:Label  id="label1" text="Label字体颜色" ></mx:Label>
+	
+	<mx:Canvas  id="dg1"  x="108" y="117" width="500" height="700">
+		
+	</mx:Canvas>
+	<mx:Panel id="dg2"  x="-5" y="-30" width="500" height="700" borderColor="#F8F7F7"
+			  borderVisible="false" chromeColor="#F9F2F2" dropShadowVisible="false"
+			  focusColor="#EFF2F5" layout="vertical" symbolColor="#F8F5F5" title="sfsdfs"> 
+
+	</mx:Panel>
+	
+	
+	<print:Page id="page" right="133" bottom="0" top="0" left="0"  />
+	<mx:VRule height="100%"  right="132"/>
+	<print:ThumbList id="thumbs"   visible="true"   right="0" top="0" bottom="0" width="133"
+					 
+					 print="doPrint(true)"
+					 zprint="doPrint(false)"
+					 pageset="doPageset()"
+					 zoomIn="zoomIn()"
+					 zoomOut="zoomOut()"
+					 
+					 pageChanged="pageNumberChangeHandler(event)"
+					 columnChange="columnChangePage()"
+					 shrinkChange="shrinkChangePage()"
+					 halignChange="halignChange()"
+					 clearColorChange="clearColorChange()"
+					 clearLayerChange="clearLayerChange()"
+					 
+					 zoom="{page.zoom}"
+					 zoomCom="zoomCom(event)"
+					 
+					 previous="previousPage()"
+					 next="nextPage()"
+					 first="firstPage()"
+					 last="lastPage()"
+					 winclose="winclose()"
+					 />
+	
+	<mx:Canvas id="Candrawing" visible="true" width="195" height="28" label="正在加载页面"
+			   backgroundColor="#483F3F" borderColor="#070101" borderVisible="true"
+			   chromeColor="#1F1616" dropShadowVisible="true" fontFamily="" horizontalCenter="-58"
+			   verticalCenter="-55">
+		
+		<mx:Label id="loadingLabel" left="31" width="98" color="#FEFAFA" enabled="true"
+				  fontSize="20" fontWeight="bold" horizontalCenter="-18" text="Loading"
+				  verticalCenter="0"/>
+		
+	</mx:Canvas>
+	
+</mx:Canvas>

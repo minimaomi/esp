@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<mx:VBox xmlns:mx="http://www.adobe.com/2006/mxml" 
+	width="700" 
+	height="900" 
+	creationComplete="initComponent()">
+	
+	<mx:Script>
+		<![CDATA[
+			import mx.core.UIComponent;
+
+			private var children:Array;
+			
+			private function initComponent():void
+			{
+				children = getChildren();
+				render();
+			}
+				
+			private function render():void
+			{
+				removeAllChildren();
+				
+				currentChildIndex = 0;		
+	
+				while (maxVerticalScrollPosition === 0 && currentChildIndex<children.length) {
+					addChild(children[currentChildIndex]);
+					validateNow();
+					
+					
+					if (children[currentChildIndex].hasOwnProperty("validNextPage") && children[currentChildIndex].validNextPage) {
+						break;
+					}
+					currentChildIndex++;
+				} 
+				
+				if (currentChildIndex >= children.length) {
+					currentChildIndex--;
+				}
+
+				if (maxVerticalScrollPosition !== 0) {
+					removeChildAt(currentChildIndex);
+					validateNow();
+					
+					currentChildIndex--;
+				}
+			}
+			
+			public function get validNextPage():Boolean
+			{	
+				var moreChildren:Boolean = currentChildIndex<children.length-1;
+				var morePages:Boolean = (children[currentChildIndex].hasOwnProperty("validNextPage") && children[currentChildIndex].validNextPage);
+				
+				return (moreChildren||morePages)?true:false;
+			}
+			
+			private var currentChildIndex:uint = 0;			
+			public function nextPage():void 
+			{		
+				var firstIteration:Boolean = true;
+
+				while(true) {
+					var firstIsPageable:Boolean = false;
+					if (children[currentChildIndex].hasOwnProperty("validNextPage") && children[currentChildIndex].validNextPage) 
+					{
+						if(children[currentChildIndex].hasOwnProperty("parent") && children[currentChildIndex].parent === this) 
+						{
+							firstIsPageable = true;
+						} 
+					} 
+											
+					if(firstIteration) 
+					{
+						removeAllChildren();
+						
+						if(firstIsPageable) {
+							addChild(children[currentChildIndex]);
+							children[currentChildIndex].nextPage();
+							validateNow();
+							
+							currentChildIndex++;						
+						}
+						
+						firstIteration = false;
+					}	
+									
+					if (currentChildIndex < children.length) 
+					{
+						addChild(children[currentChildIndex]);
+						validateNow();
+						
+						if (children[currentChildIndex].hasOwnProperty("validNextPage") && children[currentChildIndex].validNextPage) {
+							break;
+						}						
+						currentChildIndex++;
+
+						if (currentChildIndex >= children.length) 
+						{
+							currentChildIndex--;
+							break;
+						}
+					}
+					else {
+						currentChildIndex--;
+						break;
+					}	
+											
+					if (maxVerticalScrollPosition !== 0) 
+					{
+						removeChild(children[currentChildIndex]);
+						validateNow();
+						
+						currentChildIndex--;
+
+						break;
+					}
+				}
+			}
+			
+			public function reset():void
+			{
+				resetChildren();
+				currentChildIndex = 0;
+				removeAllChildren();
+				render();
+			}
+			
+			private function resetChildren():void
+			{
+				var child:Object;
+				for each (child in children) {
+ 					try {
+						child.reset();
+					} catch (err:ReferenceError) {}
+				}
+			}
+		]]>
+	</mx:Script>
+</mx:VBox>

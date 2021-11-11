@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" 
+	width="60" 
+	height="22" 
+	creationComplete="initComponent()" 
+	horizontalScrollPolicy="off" 
+	verticalScrollPolicy="off">
+	
+	<mx:Metadata>
+        [Event(name="pageChanged",type="flash.events.Event")]	
+	</mx:Metadata>
+	
+	<mx:Script>
+		<![CDATA[
+			[Bindable]
+			public var pageNumber:int;
+						
+			[Bindable]
+			public var pageCount:int;
+			
+			public var inputNumber:int;
+			private function pageNumberChangeHandler(event:Event):void
+			{
+				inputNumber = int(input.text);
+				input.text = "" + pageNumber;
+				dispatchEvent(new Event("pageChanged"));
+			}
+			
+            private function initComponent():void
+            {
+            	input.addEventListener(TextEvent.TEXT_INPUT,interceptChar,true,0);
+            }
+            
+			private function interceptChar(event:TextEvent):void
+			{
+            	var valid:Boolean = false;
+            	switch (event.text) {
+            		case "0": 
+            		case "1":
+            		case "2":
+            		case "3":
+            		case "4":
+            		case "5":
+            		case "6":
+            		case "7":
+            		case "8":
+            		case "9": valid = true; break
+            	}
+            	
+            	if (!valid) {
+            		event.preventDefault();
+            	}
+            }			
+		]]>
+	</mx:Script>
+	<!--<mx:TextInput id="input" text="{pageNumber}" width="22" height="22" maxChars="3" focusOut="pageNumberChangeHandler(event)" enter="pageNumberChangeHandler(event)" x="4" y="0"/-->
+	<mx:Label  id="input" text="{pageNumber}"   height="22"  x="0" y="0" />
+	<mx:Label text="{&quot; /  &quot; +  pageCount}" height="22" color="#1f2325"  right="10" width="35" y="0"/>
+	
+</mx:Canvas>

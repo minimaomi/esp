@@ -1,0 +1,7 @@
+ifxjdbc.jar     
+ifxjdbcx.jar    
+ifxlang.jar     
+ifxlsupp.jar    
+ifxsqlj.jar     
+ifxtools.jar   
+dm.jar 

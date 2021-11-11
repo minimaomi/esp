@@ -1,0 +1,322 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" 
+	width="133" 
+	height="300" 
+	backgroundColor="#dedede" 
+	xmlns:print="org.print.*"
+	xmlns:ns1="components.toolbars.*">
+	
+	<mx:Metadata>
+        [Event(name="select",type="flash.events.Event")]	
+		[Event(name="pdf",type="flash.events.Event")]
+		[Event(name="print",type="flash.events.Event")]
+		[Event(name="zprint",type="flash.events.Event")]
+		[Event(name="pageset",type="flash.events.Event")]
+		
+		[Event(name="columnChange",type="flash.events.Event")]
+		[Event(name="shrinkChange",type="flash.events.Event")]
+		
+		[Event(name="pageChanged",type="flash.events.Event")]
+		[Event(name="halignChange",type="flash.events.Event")]
+		[Event(name="clearColorChange",type="flash.events.Event")]
+		[Event(name="clearLayerChange",type="flash.events.Event")]
+		[Event(name="zoomIn",type="flash.events.Event")]
+		[Event(name="zoomOut",type="flash.events.Event")]
+		[Event(name="zoomCom",type="flash.events.Event")]
+		
+		[Event(name="previous",type="flash.events.Event")]
+		[Event(name="next",type="flash.events.Event")]
+		[Event(name="first",type="flash.events.Event")]
+		[Event(name="last",type="flash.events.Event")]
+		[Event(name="winclose",type="flash.events.Event")]
+		
+	</mx:Metadata>
+		
+	
+	<mx:Script>
+		<![CDATA[
+			[Bindable]
+			public var thumbs:Array;
+			
+			[Bindable]
+			public var selectedIndex:int = -1;
+			
+			private function thumbSelectHandler(event:MouseEvent):void
+			{
+				selectedIndex = event.currentTarget.thumbIndex;
+				dispatchEvent(new Event("select"));
+			}
+			
+			[Bindable]
+			public var pageNumber:int=1;
+			
+			[Bindable]
+			public var pageCount:int=1;
+			
+			public var inputNumber:int;
+			
+			public var comZoom:Number;
+			private function pageNumberChangeHandler(event:Event):void
+			{
+				inputNumber = pages.inputNumber;
+				dispatchEvent(new Event("pageChanged"));
+				
+			}
+			
+			[Bindable]
+			public var zoom:Number = 1;
+			
+			private function pdf():void
+			{
+				dispatchEvent(new Event("pdf"));
+			}
+			
+			private function print():void
+			{
+				dispatchEvent(new Event("print"));
+			}
+			private function zprint():void
+			{
+				dispatchEvent(new Event("zprint"));
+			}
+			private function pageset():void{
+				dispatchEvent(new Event("pageset"));
+			}
+			private function first():void{
+				dispatchEvent(new Event("first"));
+				countList.selectedIndex = 0;
+			}
+			private function last():void{
+				dispatchEvent(new Event("last"));
+				countList.selectedIndex = pageCount-1;
+			}
+			private function previous():void
+			{
+				dispatchEvent(new Event("previous"));
+				countList.selectedIndex = pageNumber-1;
+			}
+			
+			private function next():void
+			{
+				dispatchEvent(new Event("next"));
+				countList.selectedIndex = pageNumber-1;
+				
+			}
+			
+			private function zoomIn():void {
+				dispatchEvent(new Event("zoomIn"));
+			}
+			
+			private function zoomOut():void
+			{
+				dispatchEvent(new Event("zoomOut"));
+			}
+			private function pageIndexChange():void{
+				
+				//trace(countList.selectedItem.data);
+				//  pages.pageNumber = countList.selectedItem.data
+				  pageNumber  = countList.selectedItem.data
+				 // pageurl+"&flashact=3&pageIndex=0"
+				  dispatchEvent(new Event("pageChanged"));
+			}
+			private function columnChange():void{
+				dispatchEvent(new Event("columnChange"));
+			}
+			
+			private function shrinkChange():void{
+				dispatchEvent(new Event("shrinkChange"));
+			}
+			
+			private function halignChange():void{
+				dispatchEvent(new Event("halignChange"));
+			}
+			private function clearColorChange():void{
+				dispatchEvent(new Event("clearColorChange"));
+			}
+			private function clearLayerChange():void{
+				dispatchEvent(new Event("clearLayerChange"));
+			}
+			private function winclose():void{
+				dispatchEvent(new Event("winclose"));
+			}
+			
+			//.10,.40,.75,1,1.3,1.5,1.8,2,2.3,2.5,2.8,3
+			private var monthsList:Array = [{label:"整页", data:0},
+				
+				{label:"50%", data:0.5},				
+				{label:"75%", data:0.75},
+				{label:"100%", data:1},
+				{label:"150%", data:1.5},
+				{label:"200%", data:2}];
+			
+			private function zoomCom(event:Event):void {				
+				//trace("selectedDate:" + percentBox.selectedLabel + "  selectedItem:" + percentBox.selectedItem.data);
+				comZoom = percentBox.selectedItem.data;
+				dispatchEvent(new Event("zoomCom"));
+			}
+		 
+			public  function initData(pageCount:int):void
+			{
+				this.pageCount = pageCount;
+				var list:Array=[];
+				for(var i=1;i<=pageCount;i++){
+					var p={label:i, data:i};
+					list.push(p);
+				}
+				countList.dataProvider=list;
+				if(this.pageNumber>pageCount){
+					this.pageNumber=pageCount;
+				}
+				countList.selectedIndex = this.pageNumber-1;
+			}
+		 
+			public function setLabels(language:String):void{
+				if(language=="en"){
+				 	pagesno.text="PageNo";
+					pagebox.left=10;
+					
+					
+					Trunto.text = "GoTo";
+					pagelabelright.visible=false;
+					
+					firBut.label="First Page";
+					preBut.label="Prev Page";
+					nexBut.label="Next Page";
+					lasBut.label="Last Page";
+					zoomin.label="Zoom in";
+					zoomout.label="Zoom out";
+					scal.text="Scaling";
+					horiz.text="   Horizon";//
+					columnlabel.text="Columns";
+					columnbox.left=0;
+					
+					printLabel.text="    Print";
+					zoomLabel.text="      Zoom";
+					clearColor.label="Clear Color";
+					clearLayer.label="Clear Image";
+					setupPage.label="Page Setup";
+					printBut.label="Pint";
+					closeBut.label="Close";
+					
+					monthsList[0]= {label:"Whole", data:0};
+					percentBox.dataProvider=monthsList;
+					
+					var Obj:Array = [{label:"Center", data:1},
+						{label:"Left", data:0},
+						{label:"Right", data:2}];
+					halignList.dataProvider = Obj;
+					
+					Obj = [{label:"All", data:0},
+						{label:"odd", data:1},
+						{label:"even", data:2}];
+					printpages.dataProvider = Obj;
+					
+					Obj = [{label:"None", data:1},
+						{label:"Wide", data:2},
+						{label:"High", data:3}];
+					shrink.dataProvider=Obj;
+				}
+			}
+		]]>
+	</mx:Script>
+	<mx:Canvas bottom="0" top="10"  horizontalScrollPolicy="off"  verticalScrollPolicy="off" >
+		<mx:VBox left="0" right="0" top="0" bottom="0" horizontalGap="3">	
+			<mx:Canvas   backgroundColor="#dedede">
+			</mx:Canvas>
+			
+			
+		</mx:VBox>
+		<mx:HBox horizontalGap="3" id="pagebox"  top="10" left="30">
+			<mx:Label id="pagesno" text="页码:"/>
+			<print:PagesButton id="pages" pageChanged="pageNumberChangeHandler(event)" pageNumber="{pageNumber}" pageCount="{pageCount}"/>
+		</mx:HBox>
+		
+		<mx:HBox horizontalGap="3"   top="35" left="15">
+			<mx:Label id="Trunto" text="到第"/><mx:ComboBox width="50" id="countList"  change="pageIndexChange()" editable="false"></mx:ComboBox><mx:Label id="pagelabelright" text="页"/>
+		</mx:HBox>
+		
+		<mx:VBox horizontalGap="10"  top="65" left="25" >
+			<mx:Button  label="最前页" id="firBut"  toolTip="First" height="24" width="84" click="first()"  />
+			<mx:Button  label="上一页"  id="preBut"  toolTip="Previous" height="24" click="previous()" width="84"/>
+			<mx:Button  label="下一页"  id="nexBut"   toolTip="Next" height="24" click="next()" width="84"/>
+			<mx:Button  label="最后页"  id="lasBut"   toolTip="Last" height="24" width="84" click="last()" />
+			
+			<mx:Button id="zoomin" label="放  大" toolTip="Zoom In" click="zoomIn()" height="24" width="84" />
+			<mx:Button id="zoomout" label="缩  小" toolTip="Zoom Out" click="zoomOut()" width="84"/>
+			
+			 
+		</mx:VBox>
+		
+		<mx:HBox horizontalGap="0"   top="245" left="10">
+			<mx:Label id="scal" text="比例"/>
+			
+			<mx:ComboBox id="percentBox" width="68"  editable="true" dataProvider="{monthsList}"  change="zoomCom(event)"    text="{(int(zoom*100))+&quot;%&quot;}">
+				
+			</mx:ComboBox> 
+			
+		</mx:HBox>
+		
+		<mx:HBox horizontalGap="0"   top="275" left="2">
+			<mx:Label id="horiz" text="水平对齐"/>
+			<mx:ComboBox width="55" id="halignList" editable="false" change="halignChange()" >
+				<mx:Array>
+					<mx:Object data="1" label="居中"/>
+					<mx:Object data="0" label="靠左"/>
+					<mx:Object data="2" label="靠右"/>
+				</mx:Array>		   
+            </mx:ComboBox> 
+		</mx:HBox>
+		
+		<mx:HBox horizontalGap="0"  id="columnbox"  top="305" left="25">
+			<mx:Label id="columnlabel" text="分栏"/><mx:NumericStepper width="55" id="columns" change="columnChange()"  value="1" /> 
+		</mx:HBox>
+		
+		<mx:HBox horizontalGap="2"   top="335" left="10">
+			<mx:Label id="printLabel" text="打印页"/>
+			<mx:ComboBox width="58" editable="false" id="printpages">
+				<mx:Array>
+					<mx:Object data="0" label="全部"/>
+					<mx:Object data="1" label="奇数"/>
+					<mx:Object data="2" label="偶数"/>
+				</mx:Array>	
+			</mx:ComboBox> 
+		</mx:HBox>
+		
+		<mx:HBox horizontalGap="1"   top="365" left="0">
+			<mx:Label id="zoomLabel" text="打印缩放"/>
+			<mx:ComboBox width="58" editable="false" id="shrink" change="shrinkChange()">
+				<mx:Array>
+					<mx:Object data="1" label="无"/>
+					<mx:Object data="2" label="按宽"/>
+					<mx:Object data="3" label="按高"/>
+				</mx:Array>		
+			</mx:ComboBox> 
+		</mx:HBox>
+		
+		<mx:VBox horizontalGap="10"  top="390" left="30" >
+			<!--<mx:CheckBox     label="镜像打印"/--> 
+			<mx:CheckBox  id="clearColor" change="clearColorChange()"  label="黑白打印"/> 
+			<mx:CheckBox  id="clearLayer" change="clearLayerChange()"  label="清除图层"/> 
+		</mx:VBox>
+		
+		<mx:HBox horizontalGap="0"  id="printPages1"  top="445" left="10">
+			<mx:Label id="startlabel" text="起始页"/><mx:NumericStepper width="55" id="startPagePrint" minimum="1" maximum="{pageCount}"   value="1" /> 
+		</mx:HBox>
+		<mx:HBox horizontalGap="0"  id="printPages2"  top="472" left="10">
+			<mx:Label id="endlabel" text="结束页"/><mx:NumericStepper width="55" id="endPagePrint"  minimum="1" maximum="{pageCount}"   value="{pageCount}" /> 
+		</mx:HBox>
+		
+		<mx:VBox horizontalGap="10"  top="500" left="25" >
+			<mx:Button id="setupPage"  label="页面设置"  toolTip="PageSet" height="24" width="84"  click="pageset()" />
+			 
+			<mx:Button id="printBut"  label="打    印"  click="print()" height="24"   width="84" toolTip="正在加载字体，请稍后打印。。"  enabled="false" />
+		
+			<mx:Button  id="closeBut" label="关    闭"  toolTip="Close" height="24" width="84" click="winclose()" />
+			<mx:Button id="zprintBut"  label="针式打印" toolTip="Print" click="zprint()" height="24"   width="84" visible="false"/>
+			
+		</mx:VBox>
+		
+	</mx:Canvas>
+	
+</mx:Canvas>
