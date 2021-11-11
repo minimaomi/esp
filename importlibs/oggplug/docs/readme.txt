@@ -1,1 +1,0 @@
-merge.bat存放到ogg所在的目录。

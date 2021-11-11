@@ -1,7 +1,0 @@
-esProc OGG For Oracle Plugin
-Copyright 2021-2023 SCUDATA Inc.
-Copyright 2008-2021 RAQSOFT Inc.
-
-This product includes Fastjson Java API(https://github.com/alibaba/fastjson/).
-This product includes ICU4J - International Component for Unicode for Java(http://www-306.ibm.com/software/globalization/icu/).
-This product includes Oracle GoldenGate Java Adapter(http://www.oracle.com/technetwork/cn/middleware/goldengate/downloads/).
